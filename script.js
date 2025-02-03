@@ -75,9 +75,7 @@ window.onload = getData;
 async function deleteInfo(infoId) {
     console.log(infoId)
 
-    const response = await axios.delete('/api/deleteInfo', {
-        data: { infoId }
-    });
+    const response = await axios.delete(`/api/deleteInfo/${infoId}`);
     console.log(response.data);
 
 }
