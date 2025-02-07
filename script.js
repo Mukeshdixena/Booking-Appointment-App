@@ -1,5 +1,7 @@
 document.addEventListener("DOMContentLoaded", initApp);
 
+let editId = null; // Store the ID of the item being edited
+
 async function initApp() {
     await fetchData();
     document.getElementById("myForm").addEventListener("submit", handleSubmit);
@@ -27,11 +29,19 @@ async function handleSubmit(event) {
     if (!name || !number || !email) return alert("Please fill in all fields.");
 
     try {
-        const response = await axios.post("http://localhost:3000/api/postInfo", { name, number, email });
-        addToList(response.data.id, name, number, email);
+        if (editId) {
+            // Update existing item
+            await axios.put(`http://localhost:3000/api/editInfo/${editId}`, { name, number, email });
+            updateListItem(editId, name, number, email);
+            editId = null; // Reset edit mode
+        } else {
+            // Create new item
+            const response = await axios.post("http://localhost:3000/api/postInfo", { name, number, email });
+            addToList(response.data.id, name, number, email);
+        }
         form.reset();
     } catch (error) {
-        console.error("Error posting data:", error);
+        console.error("Error submitting data:", error);
     }
 }
 
@@ -46,6 +56,13 @@ function addToList(id, name, number, email) {
         <button class="delete">Delete</button>`;
 
     document.getElementById("detailsList").appendChild(li);
+}
+
+function updateListItem(id, name, number, email) {
+    const li = document.querySelector(`li[data-id='${id}']`);
+    if (li) {
+        li.querySelector("span").textContent = `${id} - ${name} - ${number} - ${email}`;
+    }
 }
 
 async function handleListActions(event) {
@@ -78,5 +95,6 @@ function editItem(li) {
     form.name.value = name;
     form.number.value = number;
     form.email.value = email;
-    li.remove();
+
+    editId = id; // Set edit mode
 }
