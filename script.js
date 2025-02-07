@@ -1,81 +1,82 @@
-document.getElementById("myForm").addEventListener("submit", function (event) {
+document.addEventListener("DOMContentLoaded", initApp);
+
+async function initApp() {
+    await fetchData();
+    document.getElementById("myForm").addEventListener("submit", handleSubmit);
+    document.getElementById("detailsList").addEventListener("click", handleListActions);
+}
+
+async function fetchData() {
+    try {
+        const response = await axios.get("http://localhost:3000/api/getInfo");
+        console.log(response);
+        response.data.forEach(({ id, name, number, email }) => addToList(id, name, number, email));
+    } catch (error) {
+        console.error("Error fetching data:", error);
+    }
+}
+
+async function handleSubmit(event) {
     event.preventDefault();
 
-    let name = document.getElementById("name").value;
-    let number = document.getElementById("number").value;
-    let email = document.getElementById("email").value;
+    const form = event.target;
+    const name = form.name.value.trim();
+    const number = form.number.value.trim();
+    const email = form.email.value.trim();
 
-    if (name && number && email) {
-        axios.post('http://localhost:3000/api/postInfo', {
-            name: name,
-            number: number,
-            email: email
-        })
-            .then(response => {
-                console.log('Data posted:', response.data);
-                addToList(response.data.id, name, number, email);
-                document.getElementById("myForm").reset();
-            })
-            .catch(error => {
-                console.error(error);
-            });
-    } else {
-        alert("Please fill in all fields.");
+    if (!name || !number || !email) return alert("Please fill in all fields.");
+
+    try {
+        const response = await axios.post("http://localhost:3000/api/postInfo", { name, number, email });
+        addToList(response.data.id, name, number, email);
+        form.reset();
+    } catch (error) {
+        console.error("Error posting data:", error);
     }
-});
+}
 
 function addToList(id, name, number, email) {
-    let list = document.getElementById("detailsList");
-    let li = document.createElement("li");
-    li.setAttribute("data-id", id);
-    li.innerHTML = `<span>${id} - ${name} - ${number} - ${email}</span>
-                    <button class="edit" onclick="editItem(this)">Edit</button>
-                    <button class="delete" onclick="deleteItem(this)">Delete</button>`;
-    list.appendChild(li);
+    if (document.querySelector(`li[data-id='${id}']`)) return;
+
+    const li = document.createElement("li");
+    li.dataset.id = id;
+    li.innerHTML = `
+        <span>${id} - ${name} - ${number} - ${email}</span>
+        <button class="edit">Edit</button>
+        <button class="delete">Delete</button>`;
+
+    document.getElementById("detailsList").appendChild(li);
 }
 
-function deleteItem(btn) {
-    let li = btn.parentElement;
-    let id = li.getAttribute("data-id");
+async function handleListActions(event) {
+    const btn = event.target;
+    const li = btn.closest("li");
+    const id = li?.dataset.id;
 
-    if (!id) {
-        console.error("No ID found for deletion.");
-        return;
+    if (!id) return;
+
+    if (btn.classList.contains("delete")) {
+        await deleteInfo(id);
+        li.remove();
+    } else if (btn.classList.contains("edit")) {
+        editItem(li);
     }
-    let infoId = parseInt(id);
-    deleteInfo(infoId)
-        .then(() => li.remove())
-        .catch(error => console.error("Failed to delete:", error));
 }
 
-function editItem(btn) {
-    let details = btn.parentElement.firstChild.textContent.split(" - ");
-    document.getElementById("name").value = details[1];
-    document.getElementById("number").value = details[2];
-    document.getElementById("email").value = details[3];
-    btn.parentElement.remove();
+async function deleteInfo(id) {
+    try {
+        await axios.delete(`http://localhost:3000/api/deleteInfo/${id}`);
+    } catch (error) {
+        console.error("Error deleting item:", error);
+    }
 }
 
-function getData() {
-    axios.get('http://localhost:3000/api/getInfo')
-        .then(response => {
-            console.log('Fetched info:', response.data.data);
-            for (let info of response.data.data) {
-                const { id, name, number, email } = info;
-                addToList(id, name, number, email);
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching data:', error);
-        });
-}
+function editItem(li) {
+    const [id, name, number, email] = li.querySelector("span").textContent.split(" - ");
+    const form = document.getElementById("myForm");
 
-window.onload = getData;
-
-async function deleteInfo(infoId) {
-    console.log(infoId)
-
-    const response = await axios.delete(`http://localhost:3000/api/deleteInfo/${infoId}`);
-    console.log(response.data);
-
+    form.name.value = name;
+    form.number.value = number;
+    form.email.value = email;
+    li.remove();
 }
